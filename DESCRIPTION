@@ -14,6 +14,8 @@ Description: A toolkit for manipulating,
 License: MIT + file LICENSE
 SystemRequirements: Boost.Asio and Boost.Regex from
         http://www.boost.org/. See README.
+URL: https://github.com/hrbrmstr/iptools
+BugReports: https://github.com/hrbrmstr/iptools/issues
 NeedsCompilation: yes
 Depends: R (>= 2.10)
 Suggests: testthat, knitr
