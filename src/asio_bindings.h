@@ -1,5 +1,16 @@
+// [[Rcpp::depends(BH)]]
+// [[Rcpp::depends(AsioHeaders)]]
+
 #include <Rcpp.h>
-#include <boost/asio.hpp>
+
+#ifdef __APPLE__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
+#endif
+#include <asio.hpp>
+#ifdef __APPLE__
+#pragma clang diagnostic pop
+#endif
 #include <iostream>
 #include <sstream>
 
@@ -9,7 +20,7 @@ using namespace Rcpp;
 #define __ASIO_BINDINGS__
 
 /**
- * A class containing the boost::asio bindings in use in iptools.
+ * A class containing the asio bindings in use in iptools.
  */
 class asio_bindings {
 
@@ -21,7 +32,7 @@ private:
    * (since it's reusable) we'll hopefully get a speed improvement
    * out of only using one.
    */
-  boost::asio::io_service io_service;
+  asio::io_service io_service;
 
   /**
    * A function for taking a hostname ("http://en.wikipedia.org")
@@ -37,7 +48,7 @@ private:
    * @return a vector containing the IP address(es) the hostname
    * resolves to.
    */
-  std::vector < std::string > single_hostname_to_dns(std::string hostname, boost::asio::ip::tcp::resolver& resolver_ptr);
+  std::vector < std::string > single_hostname_to_dns(std::string hostname, asio::ip::tcp::resolver& resolver_ptr);
 
   /**
    * A function for taking an IP address ("162.243.111.4")
@@ -53,7 +64,7 @@ private:
    * @return a vector containing the hostname(s) the IP
    * resolves to.
    */
-  std::vector < std::string > single_ip_to_dns(std::string ip_address, boost::asio::ip::tcp::resolver& resolver_ptr);
+  std::vector < std::string > single_ip_to_dns(std::string ip_address, asio::ip::tcp::resolver& resolver_ptr);
 
   /**
    * A function for identifying whether or not an IP
@@ -186,6 +197,17 @@ public:
    * or "Invalid" for each element of the input vector.
    */
   std::vector < std::string > classify_ip_ (std::vector < std::string > ip_addresses);
+
+  /**
+   * Identify if IP addresses are multicast or not
+   *
+   * @param a vector of strings containing IP addresses, in
+   * dotted-decimal form.
+   *
+   * @return a boolean vector containing trues for those that
+   * are multicast, and false for those that aren't.
+   */
+  LogicalVector is_multicast_ (std::vector < std::string > ip_addresses);
 
   /**
    * A function for identifying whether or vector of

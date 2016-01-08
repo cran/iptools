@@ -10,7 +10,7 @@
 
 <meta name="author" content="Oliver Keyes" />
 
-<meta name="date" content="2015-07-22" />
+<meta name="date" content="2015-12-30" />
 
 <title>Introduction to iptools</title>
 
@@ -54,7 +54,7 @@ code > span.er { color: #ff0000; font-weight: bold; }
 <div id="header">
 <h1 class="title">Introduction to iptools</h1>
 <h4 class="author"><em>Oliver Keyes</em></h4>
-<h4 class="date"><em>2015-07-22</em></h4>
+<h4 class="date"><em>2015-12-30</em></h4>
 </div>
 
 
@@ -82,7 +82,7 @@ numeric_ips
 </div>
 <div id="resolving-hostnames" class="section level3">
 <h3>Resolving hostnames</h3>
-<p>Thanks to Boost’s <a href="http://www.boost.org/doc/libs/1_58_0/doc/html/boost_asio.html">asio networking library</a>, which is integrated with <code>iptools</code>, we can take a hostname and work out what IP address(es) are associated with it:</p>
+<p>The <code>iptools</code> package has integrated the <code>AsioHeaders</code> package which includes the <a href="http://think-async.com/">asio networking library</a>. Thanks to this we can take a hostname and work out what IP address(es) are associated with it:</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">hostname_to_ip</span>(<span class="st">&quot;lga15s49-in-f6.1e100.net&quot;</span>)
 [[<span class="dv">1</span>]]
 [<span class="dv">1</span>] <span class="st">&quot;173.194.123.102&quot;</span></code></pre>
