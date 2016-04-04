@@ -225,7 +225,7 @@ std::vector < std::string > asio_bindings::single_ip_to_dns(std::string ip_addre
 
 bool asio_bindings::single_ip_in_range(std::string ip_address, std::string range){
 
-  unsigned int first_ip;
+  unsigned int first_ip, mask;
   int slash_val;
   char range_copy[24];
   char *slash_pos;
@@ -244,7 +244,8 @@ bool asio_bindings::single_ip_in_range(std::string ip_address, std::string range
 
     slash_val = atoi(slash_pos);
     first_ip = asio::ip::address_v4::from_string(std::string(range_copy)).to_ulong();
-    unsigned int mask = ~(0xffffffff >> slash_val);
+    // shifting by 32 bits is undefined
+    mask = slash_val == 32 ? 0xffffffff : ~(0xffffffff >> slash_val);
     unsigned int cidr_int = first_ip & mask ;
 
     output = ((asio::ip::address_v4::from_string(ip_address).to_ulong() & mask) == cidr_int);
@@ -475,8 +476,12 @@ DataFrame asio_bindings::calculate_range_(std::vector < std::string > ranges){
     max_holding[i] = holding[1];
     holding.clear();
   }
+
   return DataFrame::create(_["minimum_ip"] = min_holding,
                            _["maximum_ip"] = max_holding,
+                           _["min_numeric"] = ip_to_numeric_(min_holding),
+                           _["max_numeric"] = ip_to_numeric_(max_holding),
+                           _["range"] = ranges,
                            _["stringsAsFactors"] = false);
 }
 
