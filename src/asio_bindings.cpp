@@ -2,15 +2,16 @@
 // [[Rcpp::depends(AsioHeaders)]]
 
 #include <Rcpp.h>
+#include <stdio.h>
 
-#ifdef __APPLE__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-local-typedef"
-#endif
+// #ifdef __APPLE__
+// #pragma clang diagnostic push
+// #pragma clang diagnostic ignored "-Wunused-local-typedef"
+// #endif
 #include <asio.hpp>
-#ifdef __APPLE__
-#pragma clang diagnostic pop
-#endif
+// #ifdef __APPLE__
+// #pragma clang diagnostic pop
+// #endif
 
 #include "asio_bindings.h"
 
@@ -231,7 +232,12 @@ bool asio_bindings::single_ip_in_range(std::string ip_address, std::string range
   char *slash_pos;
   bool output = false;
 
-  strncpy(range_copy, range.c_str(), 24); // safe copy
+  int sz = strnlen(range.c_str(), 23);
+
+  // safe'r' copy according to CRAN & gcc-8
+  memcpy(&range_copy[0], range.c_str(), sz);
+  range_copy[sz] = '\0';
+  // strncpy(range_copy, range.c_str(), 24); // safe copy
   slash_pos = strchr(range_copy, '/'); // find the "/"
 
   if(slash_pos == NULL){
@@ -265,7 +271,12 @@ std::vector < std::string > asio_bindings::calculate_ip_range(std::string range)
   char *slash_pos;
   std::vector < std::string > output;
 
-  strncpy(cidr_copy, range.c_str(), 24);
+  int sz = strnlen(range.c_str(), 23);
+
+  // safe'r' copy according to CRAN & gcc-8
+  memcpy(&cidr_copy[0], range.c_str(), sz);
+  cidr_copy[sz] = '\0';
+  // strncpy(cidr_copy, range.c_str(), 24);
   slash_pos = strchr(cidr_copy, '/');
   if (slash_pos == NULL){
     output.push_back("Invalid");
@@ -346,6 +357,51 @@ std::list < std::vector < std::string > > asio_bindings::multi_ip_to_dns(std::ve
   return output;
 }
 
+std::vector < std::string > asio_bindings::expand_ipv6_(std::vector < std::string > ip_addresses) {
+
+  unsigned int input_size = ip_addresses.size();
+  std::vector < std::string > output(input_size);
+  asio::ip::address_v6::bytes_type v;
+  char str[50];
+
+  for(unsigned int i = 0; i < input_size; i++){
+    if((i % 10000) == 0){
+      Rcpp::checkUserInterrupt();
+    }
+    try{
+      //      output[i] = asio::ip::address_v6::from_string(ip_addresses[i]).to_string();
+      v = asio::ip::address_v6::from_string(ip_addresses[i]).to_bytes();
+      (void)sprintf(str, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+       (uint8_t)v[0], (uint8_t)v[1], (uint8_t)v[2], (uint8_t)v[3], (uint8_t)v[4], (uint8_t)v[5], (uint8_t)v[6], (uint8_t)v[7], (uint8_t)v[8], (uint8_t)v[9], (uint8_t)v[10], (uint8_t)v[11], (uint8_t)v[12], (uint8_t)v[13], (uint8_t)v[14], (uint8_t)v[15]);
+      output[i] = std::string(str);
+    } catch (...) {
+      output[i] = "";
+    }
+  }
+
+  return output;
+}
+
+std::vector < unsigned long > asio_bindings::v6_scope_(std::vector < std::string > ip_addresses){
+
+  unsigned int input_size = ip_addresses.size();
+  std::vector < unsigned long > output(input_size);
+
+  for(unsigned int i = 0; i < input_size; i++){
+    if((i % 10000) == 0){
+      Rcpp::checkUserInterrupt();
+    }
+    try{
+      output[i] = asio::ip::address_v6::from_string(ip_addresses[i]).scope_id();
+    } catch (...) {
+      Rcout << "error" << std::endl;
+      output[i] = -1;
+    }
+  }
+
+  return output;
+}
+
 std::vector < unsigned int > asio_bindings::ip_to_numeric_(std::vector < std::string > ip_addresses){
 
   unsigned int input_size = ip_addresses.size();
@@ -383,32 +439,37 @@ std::vector < std::string > asio_bindings::numeric_to_ip_ (std::vector < unsigne
   return output;
 }
 
-std::vector < std::string > asio_bindings::classify_ip_ (std::vector < std::string > ip_addresses){
+CharacterVector asio_bindings::classify_ip_(CharacterVector ip_addresses){
   unsigned int input_size = ip_addresses.size();
   asio::ip::address holding;
+  CharacterVector output(input_size);
 
   for(unsigned int i = 0; i < input_size; i++){
     if((i % 10000) == 0){
       Rcpp::checkUserInterrupt();
     }
-    try{
-      holding = asio::ip::address::from_string(ip_addresses[i]);
-      if(holding.is_v4()){
-        ip_addresses[i] = "IPv4";
-      } else if(holding.is_v6()){
-        ip_addresses[i] = "IPv6";
-      } else {
-        ip_addresses[i] = "Invalid";
+    if(ip_addresses[i] == NA_STRING){
+      output[i] = NA_STRING;
+    } else {
+      try{
+        holding = asio::ip::address::from_string(ip_addresses[i]);
+        if(holding.is_v4()){
+          output[i] = "IPv4";
+        } else if(holding.is_v6()){
+          output[i] = "IPv6";
+        } else {
+          output[i] = NA_STRING;
+        }
+      } catch(...){
+        output[i] = NA_STRING;
       }
-    } catch(...){
-      ip_addresses[i] = "Invalid";
     }
 
   }
-  return ip_addresses;
+  return output;
 }
 
-LogicalVector asio_bindings::is_multicast_ (std::vector < std::string > ip_addresses){
+LogicalVector asio_bindings::is_multicast_ (CharacterVector ip_addresses){
 
   unsigned int input_size = ip_addresses.size();
   LogicalVector output(input_size);
@@ -418,17 +479,20 @@ LogicalVector asio_bindings::is_multicast_ (std::vector < std::string > ip_addre
     if((i % 10000) == 0){
       Rcpp::checkUserInterrupt();
     }
-    try{
-      holding = asio::ip::address::from_string(ip_addresses[i]);
-      if(holding.is_multicast()){
-        output[i] = true;
-      } else {
-        output[i] = false;
-      }
-    } catch(...){
+    if(ip_addresses[i] == NA_STRING){
       output[i] = NA_LOGICAL;
+    } else {
+      try{
+        holding = asio::ip::address::from_string(ip_addresses[i]);
+        if(holding.is_multicast()){
+          output[i] = true;
+        } else {
+          output[i] = false;
+        }
+      } catch(...){
+        output[i] = NA_LOGICAL;
+      }
     }
-
   }
   return output;
 }
@@ -458,6 +522,52 @@ std::vector < bool > asio_bindings::ip_in_range_(std::vector < std::string > ip_
     }
   }
 
+  return output;
+}
+
+/* need this for the sort in ip_in_any() */
+bool rng_sort(const std::vector<unsigned int>&a,
+              const std::vector<unsigned int>&b) {
+  return(a[0] < b[0]);
+}
+
+/* if someone has a compelling use-case, this shld be a trie */
+std::vector < bool > asio_bindings::ip_in_any_(std::vector < std::string > ip_addresses,
+                                               std::vector < std::string > ranges){
+
+  unsigned int input_size = ip_addresses.size();
+  unsigned int ranges_size = ranges.size();
+  std::vector < bool > output(input_size);
+
+  std::vector < std::vector < unsigned int> > range_bounds(ranges_size);
+
+  /* convert range bounds, in-bulk, to integers */
+  for (unsigned int i=0; i<ranges_size; i++) {
+    range_bounds[i] = ip_to_numeric_(calculate_ip_range(ranges[i]));
+  }
+
+  /* sort the range bounds by the start value */
+  std::sort(range_bounds.begin(), range_bounds.end(), rng_sort);
+
+  for(unsigned int i = 0; i < input_size; i++){
+    if((i % 10000) == 0){
+      Rcpp::checkUserInterrupt();
+    }
+    /* convert the input IP string to numeric */
+    unsigned int ipl = asio::ip::address_v4::from_string(ip_addresses[i]).to_ulong();
+    output[i] = false;
+    /* test if it's within a range. sequential search, but short-circuits the loop if true */
+    for (unsigned int j=0; j < ranges_size; j++) {
+      if((j % 10000) == 0){
+        Rcpp::checkUserInterrupt();
+      }
+      /* integer math so this _shld_ be faster than `if` tests */
+      if ((ipl - range_bounds[j][0]) <= (range_bounds[j][1] - range_bounds[j][0])) {
+        output[i] = true;
+        break;
+      }
+    }
+  }
   return output;
 }
 

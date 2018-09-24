@@ -3,14 +3,15 @@
 
 #include <Rcpp.h>
 
-#ifdef __APPLE__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-local-typedef"
-#endif
+// #ifdef __APPLE__
+// #pragma clang diagnostic push
+// #pragma clang diagnostic ignored "-Wunused-local-typedef"
+// #endif
 #include <asio.hpp>
-#ifdef __APPLE__
-#pragma clang diagnostic pop
-#endif
+// #ifdef __APPLE__
+// #pragma clang diagnostic pop
+// #endif
+
 #include <iostream>
 #include <sstream>
 
@@ -157,6 +158,10 @@ public:
       std::vector < std::string > ip_addresses
   );
 
+  std::vector < unsigned long > v6_scope_(std::vector < std::string > ip_addresses);
+
+  std::vector < std::string > expand_ipv6_(std::vector < std::string > ip_addresses);
+
   /**
    * A function for taking a vector of IPv4 addresses in dotted-decimal
    * notation ("162.243.111.4") and converting them to their numeric
@@ -196,7 +201,7 @@ public:
    * @return a vector of strings containing "IPv4", "IPv6"
    * or "Invalid" for each element of the input vector.
    */
-  std::vector < std::string > classify_ip_ (std::vector < std::string > ip_addresses);
+  CharacterVector classify_ip_ (CharacterVector ip_addresses);
 
   /**
    * Identify if IP addresses are multicast or not
@@ -207,7 +212,7 @@ public:
    * @return a boolean vector containing trues for those that
    * are multicast, and false for those that aren't.
    */
-  LogicalVector is_multicast_ (std::vector < std::string > ip_addresses);
+  LogicalVector is_multicast_ (CharacterVector ip_addresses);
 
   /**
    * A function for identifying whether or vector of
@@ -224,6 +229,20 @@ public:
    * in range) for each IP.
    */
   std::vector < bool > ip_in_range_(std::vector < std::string > ip_addresses, std::vector < std::string > ranges);
+
+  /**
+   * A function for identifying whether or vector of
+   * IP addresses fall within a set of CIDR ranges
+   *
+   * @param ip_addresses a vector of IP addresses
+   *
+   * @param range a vector of ranges.
+   *
+   * @return a vector of boolean true (in ranges) or false (not
+   * in ranges) for each IP.
+   */
+
+  std::vector < bool > ip_in_any_(std::vector < std::string > ip_addresses, std::vector < std::string > ranges);
 
   /**
    * A vectorised version of calculate_ip_range

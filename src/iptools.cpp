@@ -2,19 +2,70 @@
 // [[Rcpp::depends(AsioHeaders)]]
 
 #include <Rcpp.h>
+#include <cstdint>
 
-#ifdef __APPLE__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-local-typedef"
-#endif
-#include <asio.hpp>
-#ifdef __APPLE__
-#pragma clang diagnostic pop
-#endif
+// #ifdef __APPLE__
+// #pragma clang diagnostic push
+// #pragma clang diagnostic ignored "-Wunused-local-typedef"
+// #endif
+// #include <asio.hpp>
+// #ifdef __APPLE__
+// #pragma clang diagnostic pop
+// #endif
+
+#include <bitset>
 
 #include "asio_bindings.h"
 
 using namespace Rcpp;
+
+//' @title Convert a start+end IP address range pair to representative CIDR blocks
+//' @description takes in a single start/end pair and returns a charcter vector
+//'              of all the CIDR blocks necessary to contain the range.
+//' @param ip_start,ip_end range start/end (numeric)
+//' @return character vector
+//' @export
+//' @examples
+//' range_boundaries_to_cidr(
+//'  ip_to_numeric("192.100.176.0"),
+//'  ip_to_numeric("192.100.179.255")
+//' )
+//' ## [1] "192.100.176.0/22"
+//[[Rcpp::export]]
+std::vector < std::string > range_boundaries_to_cidr(long int ip_start, long int ip_end) {
+
+  uint8_t bits = 1;
+  long int mask = 1;
+  long int new_ip;
+  std::stringstream ss;
+  std::vector < std::string > cidrs;
+
+  while (bits < 32) {
+    new_ip = ip_start | mask;
+    if ((new_ip > ip_end) || (((ip_start >> bits) << bits) != ip_start)) {
+      bits--;
+      mask = mask >> 1;
+      break;
+    }
+    bits++;
+    mask = (mask << 1) + 1;
+  }
+
+  new_ip = ip_start | mask;
+  bits = 32 - bits;
+
+  // get the first (possibly only) CIDR block
+  ss << ((long int)bits);
+  cidrs.push_back(asio::ip::address_v4(ip_start).to_string() + "/" + ss.str());
+
+  if (new_ip < ip_end) { // if we're not done, compute more and join everything together
+    std::vector < std::string > tmp_cidrs = range_boundaries_to_cidr(new_ip+1, ip_end);
+    cidrs.insert(cidrs.end(), tmp_cidrs.begin(), tmp_cidrs.end());
+  }
+
+  return(cidrs);
+
+}
 
 //' @title Returns the IP addresses associated with a hostname.
 //' @description takes in a vector of hostnames and returns the IP addresses from
@@ -116,6 +167,30 @@ std::vector < unsigned int > ip_to_numeric(std::vector < std::string > ip_addres
   return asio_inst.ip_to_numeric_(ip_addresses);
 }
 
+//' Return the scope of an IPv6 address (string)
+//'
+//' @param ip_addresses a vector of IPv6 IP addresses.
+//' @references \url{https://tools.ietf.org/html/rfc4007}
+//' @return a numeric vector of scopes
+//' @export
+// [[Rcpp::export]]
+std::vector < unsigned long > v6_scope(std::vector < std::string > ip_addresses){
+  asio_bindings asio_inst;
+  return asio_inst.v6_scope_(ip_addresses);
+}
+
+//' Expand an IPv6 address from an abbreviated version
+//'
+//' @param ip_addresses a vector of IPv6 IP addresses.
+//' @references \url{http://www.ipv6tf.org/index.php?page=meet/faqs&faq_id=1000&q=11}
+//' @return a character vector of expanded IPv6 addresses
+//' @export
+// [[Rcpp::export]]
+std::vector < std::string > expand_ipv6(std::vector < std::string > ip_addresses){
+  asio_bindings asio_inst;
+  return asio_inst.expand_ipv6_(ip_addresses);
+}
+
 //' @rdname ip_numeric
 //' @export
 // [[Rcpp::export]]
@@ -131,7 +206,7 @@ std::vector < std::string > numeric_to_ip (std::vector < unsigned int > ip_addre
 //'@param ip_addresses a vector of IPv4 or IPv6 IP addresses.
 //'
 //'@return a vector containing the class of each input IP address; either
-//'"IPv4", "IPv6" or, for IP addresses that were not valid, "Invalid".
+//'"IPv4", "IPv6" or, for IP addresses that were not valid, NA.
 //'
 //'@seealso \code{\link{is_valid}} et al for logical checks of IP addresses,
 //'\code{\link{ip_to_hostname}} for resolving IP addresses to their
@@ -150,11 +225,11 @@ std::vector < std::string > numeric_to_ip (std::vector < unsigned int > ip_addre
 //'
 //'#Invalid
 //'ip_classify("East Coast Twitter is Best Twitter")
-//'#[1] "Invalid"
+//'#[1] NA
 //'
 //'@export
 //[[Rcpp::export]]
-std::vector < std::string > ip_classify(std::vector < std::string > ip_addresses){
+CharacterVector ip_classify(CharacterVector ip_addresses){
   asio_bindings asio_inst;
   return asio_inst.classify_ip_(ip_addresses);
 }
@@ -222,6 +297,44 @@ std::vector < bool > ip_in_range(std::vector < std::string > ip_addresses, std::
   return asio_inst.ip_in_range_(ip_addresses, ranges);
 }
 
+//'@title check if IP address falls within any of the ranges specified
+//'@description \code{ip_in_any} checks whether a vector of IP addresses
+//'fall within any of the speficied ranges.
+//'
+//'@param ip_addresses character vector of IP addresses
+//'@param ranges character vector of CIDR reanges
+//'@return a logical vector of whether a given IP was in any of the ranges
+//'@examples \dontrun{
+//' north_america <- unlist(country_ranges(countries=c("US", "CA", "MX")))
+//' germany <- unlist(country_ranges("DE"))
+//'
+//' set.seed(1492)
+//' targets <- ip_random(1000)
+//'
+//' for_sure <- range_generate(sample(north_america, 1))
+//' all(ip_in_any(for_sure, north_america)) # shld be TRUE
+//' ## [1] TRUE
+//'
+//' absolutely_not <- range_generate(sample(germany, 1))
+//' any(ip_in_any(absolutely_not, north_america)) # shld be FALSE
+//' ## [1] FALSE
+//'
+//' who_knows_na <- ip_in_any(targets, north_america)
+//' who_knows_de <- ip_in_any(targets, germany)
+//'
+//' sum(who_knows_na)
+//' ## [1] 464
+//'
+//' sum(who_knows_de)
+//' ## [1] 43
+//'}
+//'@export
+//[[Rcpp::export]]
+std::vector < bool > ip_in_any(std::vector < std::string > ip_addresses, std::vector < std::string > ranges){
+  asio_bindings asio_inst;
+  return asio_inst.ip_in_any_(ip_addresses, ranges);
+}
+
 //'@title check whether IPv4 ranges are valid
 //'@description \code{validate_range} checks whether
 //'a vector of IPv4 CIDR ranges ("127.0.0.1/32") are valid or not.
@@ -284,13 +397,15 @@ std::vector < std::string > xff_extract(std::vector < std::string > ip_addresses
 //'
 //'@seealso \code{\link{ip_classify}} for character rather than logical classification.
 //'
+//'@return a vector of TRUE or FALSE values, indicating whether an IP is multicast or not,
+//'or NA values if the IP addresses are NAs.
+//'
 //'@examples
 //'# This is multicast
 //'is_multicast("224.0.0.2")
 //'
 //'# It's also IPv4
 //'is_ipv4("224.0.0.2")
-//'
 //'
 //'# It's not IPv6
 //'is_ipv6("224.0.0.2")
@@ -299,7 +414,52 @@ std::vector < std::string > xff_extract(std::vector < std::string > ip_addresses
 //'@rdname is_checks
 //'@export
 // [[Rcpp::export]]
-LogicalVector is_multicast(std::vector < std::string > ip_addresses){
+LogicalVector is_multicast(CharacterVector ip_addresses){
   asio_bindings asio_inst;
   return asio_inst.is_multicast_(ip_addresses);
+}
+
+//' Convert a charcter vector of IPv4 addresses to a character vector of
+//' bit strings.
+//'
+//' @param input numeric vector of IP addresses
+//' @export
+// [[Rcpp::export]]
+CharacterVector ip_numeric_to_binary_string(std::vector < unsigned int > input) {
+
+  std::vector<std::string> output(input.size());
+
+  for (unsigned int i=0; i<input.size(); i++){
+
+    if ((i % 10000) == 0) Rcpp::checkUserInterrupt();
+
+    output[i] = std::bitset<32>(input[i]).to_string();
+
+  }
+
+  return(Rcpp::wrap(output));
+}
+
+//' Convert a numeric vector of IPv4 addresses to a character vector of
+//' bit strings.
+//'
+//' @param input character vector of IP addresses
+//' @export
+// [[Rcpp::export]]
+CharacterVector ip_to_binary_string(std::vector < std::string > input) {
+
+  asio_bindings asio_inst;
+
+  std::vector<std::string> output(input.size());
+  std::vector<unsigned int> x = asio_inst.ip_to_numeric_(input);
+
+  for (unsigned int i=0; i<input.size(); i++){
+
+    if ((i % 10000) == 0) Rcpp::checkUserInterrupt();
+
+    output[i] = std::bitset<32>(x[i]).to_string();
+
+  }
+
+  return(Rcpp::wrap(output));
 }
