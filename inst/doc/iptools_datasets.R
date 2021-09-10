@@ -1,4 +1,4 @@
-## ---- eval=FALSE---------------------------------------------------------
+## ---- eval=FALSE--------------------------------------------------------------
 #  library(iptools)
 #  data(iana_assignments)
 #  str(iana_assignments)

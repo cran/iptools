@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // hilbert_encode
 NumericMatrix hilbert_encode(std::vector<unsigned> x, int bpp);
 RcppExport SEXP _iptools_hilbert_encode(SEXP xSEXP, SEXP bppSEXP) {
@@ -14,6 +19,29 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<unsigned> >::type x(xSEXP);
     Rcpp::traits::input_parameter< int >::type bpp(bppSEXP);
     rcpp_result_gen = Rcpp::wrap(hilbert_encode(x, bpp));
+    return rcpp_result_gen;
+END_RCPP
+}
+// int_ip_to_subnet
+StringVector int_ip_to_subnet(StringVector ip_addresses, IntegerVector prefix_lengths);
+RcppExport SEXP _iptools_int_ip_to_subnet(SEXP ip_addressesSEXP, SEXP prefix_lengthsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< StringVector >::type ip_addresses(ip_addressesSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type prefix_lengths(prefix_lengthsSEXP);
+    rcpp_result_gen = Rcpp::wrap(int_ip_to_subnet(ip_addresses, prefix_lengths));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ipv6_to_bytes
+List ipv6_to_bytes(std::vector < std::string > input);
+RcppExport SEXP _iptools_ipv6_to_bytes(SEXP inputSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::vector < std::string > >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(ipv6_to_bytes(input));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -200,6 +228,8 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_iptools_hilbert_encode", (DL_FUNC) &_iptools_hilbert_encode, 2},
+    {"_iptools_int_ip_to_subnet", (DL_FUNC) &_iptools_int_ip_to_subnet, 2},
+    {"_iptools_ipv6_to_bytes", (DL_FUNC) &_iptools_ipv6_to_bytes, 1},
     {"_iptools_range_boundaries_to_cidr", (DL_FUNC) &_iptools_range_boundaries_to_cidr, 2},
     {"_iptools_hostname_to_ip", (DL_FUNC) &_iptools_hostname_to_ip, 1},
     {"_iptools_ip_to_hostname", (DL_FUNC) &_iptools_ip_to_hostname, 1},

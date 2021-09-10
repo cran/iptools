@@ -10,7 +10,7 @@ vignette: >
 ---
 
 ## IP handling, conversion and validation
-`iptools` is a package to make IP addresses convenient to deal with, parse and validate. It is heavily influenced by the Python [iptools](https://python-iptools.readthedocs.org/en/latest/) module, and will hopefully make users' lives a heck of a lot easier if they have to deal with IP data. Much of it is currently IPv4-specific, out of necessity, but as R's support for bigger numbers increases, we'll hopefully make as much of it support IPv6 as possible!
+`iptools` is a package to make IP addresses convenient to deal with, parse and validate. It is heavily influenced by the Python [iptools](https://python-iptools.readthedocs.io/en/latest/) module, and will hopefully make users' lives a heck of a lot easier if they have to deal with IP data. Much of it is currently IPv4-specific, out of necessity, but as R's support for bigger numbers increases, we'll hopefully make as much of it support IPv6 as possible!
 
 ### Validating, converting and classifying IP addresses
 

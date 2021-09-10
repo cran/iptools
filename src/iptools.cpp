@@ -16,8 +16,72 @@
 #include <bitset>
 
 #include "asio_bindings.h"
+#include <asio/ip/network_v4.hpp>
 
 using namespace Rcpp;
+using namespace asio::ip;
+
+//[[Rcpp::export]]
+StringVector int_ip_to_subnet(StringVector ip_addresses, IntegerVector prefix_lengths) {
+
+  unsigned int input_size = ip_addresses.size();
+  asio::ip::address holding;
+  StringVector output(input_size);
+
+  for(unsigned int i = 0; i < input_size; i++){
+    if ((i % 10000) == 0) Rcpp::checkUserInterrupt();
+    if (ip_addresses[i] == NA_STRING){
+      output[i] = NA_STRING;
+    } else {
+      network_v4 net = network_v4(
+        address_v4::from_string(ip_addresses[i]),
+        prefix_lengths[i]
+      );
+      output[i] = net.network().to_string() + "/" + std::to_string(prefix_lengths[i]);
+    }
+  }
+
+  return(output);
+
+}
+
+//' Convert a character vector of IPv6 addresses to a list of raw vectors of bytes
+//'
+//' @param input input IPv6 string vector
+//' @export
+//' @examples
+//' c("2001:db8::1",
+//'   "2001:e42:101:2:202:181:99:52",
+//'   "2400:8500:1801:417:118:27:35:213",
+//'   "x",
+//'   "2a02:2770:8:0:21a:4aff:fe96:7a47",
+//'   "2400:2413:32c0:8:21a:92ff:fe22:c7b3",
+//'   "2001:44b8:3138:c570:250:56ff:fe9c:c19b",
+//'   "240f:a2:2e5:1:214:c2ff:fec8:1673",
+//'   "2001:e42:102:1103:153:121:36:109",
+//'   "2401:2500:203:2f:153:127:108:158"
+//' ) -> tst6
+//'
+//' ipv6_to_bytes(tst6)
+//[[Rcpp::export]]
+List ipv6_to_bytes(std::vector < std::string > input) {
+
+  List out = List(input.size());
+
+  for (unsigned int i=0; i<input.size(); i++) {
+    try{
+      asio::ip::address_v6::bytes_type b = asio::ip::make_address_v6(input[i].c_str()).to_bytes();
+      RawVector v = RawVector(16);
+      for(unsigned int j=0; j<=15; j++) v[j] = b[j];
+      out[i] = v;
+    } catch(...) {
+      out[i] = RawVector(0);
+    }
+  }
+
+  return(out);
+
+}
 
 //' @title Convert a start+end IP address range pair to representative CIDR blocks
 //' @description takes in a single start/end pair and returns a charcter vector
@@ -182,7 +246,6 @@ std::vector < unsigned long > v6_scope(std::vector < std::string > ip_addresses)
 //' Expand an IPv6 address from an abbreviated version
 //'
 //' @param ip_addresses a vector of IPv6 IP addresses.
-//' @references \url{http://www.ipv6tf.org/index.php?page=meet/faqs&faq_id=1000&q=11}
 //' @return a character vector of expanded IPv6 addresses
 //' @export
 // [[Rcpp::export]]
